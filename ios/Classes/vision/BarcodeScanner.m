@@ -23,33 +23,37 @@
 }
 
 - (void)handleDetection:(FlutterMethodCall *)call result:(FlutterResult)result {
-    MLKVisionImage *image = [MLKVisionImage visionImageFromData:call.arguments[@"imageData"]];
-    NSArray *array = call.arguments[@"formats"];
-    
-    NSInteger formats = 0;
-    for (NSNumber *num in array) {
-        formats += [num intValue];
+    @try {
+        MLKVisionImage *image = [MLKVisionImage visionImageFromData:call.arguments[@"imageData"]];
+        NSArray *array = call.arguments[@"formats"];
+
+        NSInteger formats = 0;
+        for (NSNumber *num in array) {
+            formats += [num intValue];
+        }
+
+        MLKBarcodeScannerOptions *options = [[MLKBarcodeScannerOptions alloc] initWithFormats: formats];
+        barcodeScanner = [MLKBarcodeScanner barcodeScannerWithOptions:options];
+
+        [barcodeScanner processImage:image
+                          completion:^(NSArray<MLKBarcode *> *barcodes, NSError *error) {
+            if (error) {
+                result(getFlutterError(error));
+                return;
+            } else if (!barcodes) {
+                result(@[]);
+                return;
+            }
+
+            NSMutableArray *array = [NSMutableArray array];
+            for (MLKBarcode *barcode in barcodes) {
+                [array addObject:[self barcodeToDictionary:barcode]];
+            }
+            result(array);
+        }];
+    } @catch ( NSException *e ) {
+        result([FlutterError errorWithCode:@"google_mlkit" message:e.reason details:e.name]);
     }
-    
-    MLKBarcodeScannerOptions *options = [[MLKBarcodeScannerOptions alloc] initWithFormats: formats];
-    barcodeScanner = [MLKBarcodeScanner barcodeScannerWithOptions:options];
-    
-    [barcodeScanner processImage:image
-                      completion:^(NSArray<MLKBarcode *> *barcodes, NSError *error) {
-        if (error) {
-            result(getFlutterError(error));
-            return;
-        } else if (!barcodes) {
-            result(@[]);
-            return;
-        }
-        
-        NSMutableArray *array = [NSMutableArray array];
-        for (MLKBarcode *barcode in barcodes) {
-            [array addObject:[self barcodeToDictionary:barcode]];
-        }
-        result(array);
-    }];
 }
 
 - (NSDictionary *)barcodeToDictionary:(MLKBarcode *)barcode {
