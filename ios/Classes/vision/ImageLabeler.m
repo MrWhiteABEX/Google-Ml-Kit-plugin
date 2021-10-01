@@ -3,7 +3,6 @@
 #import <MLKitImageLabeling/MLKitImageLabeling.h>
 #import <MLKitImageLabelingCommon/MLKitImageLabelingCommon.h>
 #import <MLKitImageLabelingCustom/MLKitImageLabelingCustom.h>
-#import <MLKitLinkFirebase/MLKitLinkFirebase.h>
 
 #define startImageLabelDetector @"vision#startImageLabelDetector"
 #define closeImageLabelDetector @"vision#closeImageLabelDetector"
@@ -33,10 +32,6 @@
     
     if ([@"default" isEqualToString:type]) {
         MLKImageLabelerOptions *options = [self getImageLabelerOptions:dictionary];
-        labeler = [MLKImageLabeler imageLabelerWithOptions:options];
-    } else if ([@"customLocal" isEqualToString:type] || [@"customRemote" isEqualToString:type]) {
-        MLKCustomImageLabelerOptions *options = [self getCustomLabelerOptions:dictionary result:result];
-        if (options == NULL) return;
         labeler = [MLKImageLabeler imageLabelerWithOptions:options];
     } else {
         NSString *reason =
@@ -75,37 +70,6 @@
     MLKImageLabelerOptions *options = [MLKImageLabelerOptions new];
     options.confidenceThreshold = conf;
     
-    return options;
-}
-
-- (MLKCustomImageLabelerOptions *)getCustomLabelerOptions:(NSDictionary *)optionsData result:(FlutterResult)result {
-    NSNumber *local = optionsData[@"local"];
-    NSNumber *conf = optionsData[@"confidenceThreshold"];
-    MLKLocalModel *localModel;
-    MLKCustomImageLabelerOptions *options;
-    if (local.boolValue) {
-        NSString *path = optionsData[@"path"];
-        localModel = [[MLKLocalModel alloc] initWithPath:path];
-        options = [[MLKCustomImageLabelerOptions alloc] initWithLocalModel:localModel];
-    } else {
-        NSString *modelName = optionsData[@"modelName"];
-        MLKFirebaseModelSource *firebaseModelSource = [[MLKFirebaseModelSource alloc] initWithName:modelName];
-        MLKCustomRemoteModel *remoteModel = [[MLKCustomRemoteModel alloc] initWithRemoteModelSource:firebaseModelSource];
-        options = [[MLKCustomImageLabelerOptions alloc] initWithRemoteModel:remoteModel];
-        
-        MLKModelManager *modelManager = [MLKModelManager modelManager];
-        
-        BOOL isModelDownloaded = [modelManager isModelDownloaded:remoteModel];
-        
-        if (!isModelDownloaded) {
-            FlutterError *error = [FlutterError errorWithCode:@"Error Model has not been downloaded yet"
-                                                      message:@"Model has not been downloaded yet"
-                                                      details:@"Model has not been downloaded yet"];
-            result(error);
-            return NULL;
-        }
-    }
-    options.confidenceThreshold = conf;
     return options;
 }
 
